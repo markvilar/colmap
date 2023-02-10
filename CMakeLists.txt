@@ -40,7 +40,8 @@ set(COLMAP_VERSION_NUMBER "3900")
 # Include CMake dependencies
 ################################################################################
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+# TODO: Remove?
+# set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 include(CheckCXXCompilerFlag)
 
@@ -66,6 +67,9 @@ option(CCACHE_ENABLED "Whether to enable compiler caching, if available" ON)
 option(CGAL_ENABLED "Whether to enable the CGAL library" ON)
 option(BOOST_STATIC "Whether to enable static boost library linker flags" ON)
 
+# NOTE: Custom
+option(COLMAP_CONAN_ENABLED "Enable Conan for package management" ON)
+
 if(TESTS_ENABLED)
     enable_testing()
 endif()
@@ -79,6 +83,36 @@ endif()
 # Build position-independent code, so that shared libraries can link against
 # COLMAP's static libraries.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+################################################################################
+# Package management
+################################################################################
+
+if(COLMAP_CONAN_ENABLED)
+    if(CONAN_EXPORTED)
+        include("${CMAKE_BINARY_DIR}/conanbuildinfo.cmake")
+        conan_basic_setup()
+    else()
+        include(cmake/conan.cmake)
+        SET(COLMAP_CONAN_PACKAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/packages")
+        
+        # TODO: conan_cmake_configure()
+        
+        conan_cmake_autodetect(COLMAP_CONAN_SETTINGS)
+        
+        # TODO: conan_cmake_profile()
+
+        conan_cmake_install(
+            PATH_OR_REFERENCE "${CMAKE_CURRENT_SOURCE_DIR}/conanfile.py"
+            BUILD "missing"
+            SETTINGS "${COLMAP_CONAN_SETTINGS}"
+            INSTALL_FOLDER "${COLMAP_CONAN_PACKAGE_DIR}"
+        )
+
+        list(APPEND CMAKE_MODULE_PATH "${COLMAP_CONAN_PACKAGE_DIR}")
+        list(APPEND CMAKE_PREFIX_PATH "${COLMAP_CONAN_PACKAGE_DIR}")
+    endif()
+endif()
 
 ################################################################################
 # Find packages
